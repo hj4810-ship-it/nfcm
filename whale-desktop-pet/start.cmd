@@ -15,10 +15,19 @@ if not exist "%EXE%" (
   exit /b 1
 )
 
-rem Electron needs its profile dir to exist before start.
 if not exist "%DATA%" mkdir "%DATA%" >nul 2>&1
 if not exist "%PROFILE%" mkdir "%PROFILE%" >nul 2>&1
 
 set "WHALE_PET_DATA=%DATA%"
 start "" "%EXE%" "%APP%" --no-sandbox --user-data-dir="%PROFILE%"
+
+rem If the previous run was killed hard, Chromium may leave a dirty profile
+rem that makes the next start crash instantly. Detect and retry with a clean one.
+timeout /t 5 /nobreak >nul
+tasklist /fi "imagename eq electron.exe" 2>nul | find /i "electron.exe" >nul
+if errorlevel 1 (
+  rmdir /s /q "%PROFILE%" >nul 2>&1
+  mkdir "%PROFILE%" >nul 2>&1
+  start "" "%EXE%" "%APP%" --no-sandbox --user-data-dir="%PROFILE%"
+)
 exit /b 0
